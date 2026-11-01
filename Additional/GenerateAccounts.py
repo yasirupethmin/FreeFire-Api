@@ -41,7 +41,7 @@ def register(region):
     hd = {'User-Agent':ua,'Authorization':f"Signature {hmac.new(s,bd.encode(),hashlib.sha256).hexdigest()}",'Content-Type':'application/x-www-form-urlencoded'}
     
     # Guest Register
-    r1 = session.post('https://ffmconnect.live.gop.garenanow.com/oauth/guest/register', data=bd, headers=hd, timeout=10)
+    r1 = session.post('https://ffmconnect.live.gop.garenanow.com/oauth/guest/register', data=bd, headers=hd, timeout=60)
     if r1.status_code != 200: 
         session.close()
         return None, None
@@ -53,7 +53,7 @@ def register(region):
     
     # Token Grant
     td = {'uid':str(uid),'password':ph,'response_type':"token",'client_type':"2",'client_secret':s.decode(),'client_id':cid}
-    r2 = session.post("https://ffmconnect.live.gop.garenanow.com/oauth/guest/token/grant", data=td, headers={'User-Agent':ua}, timeout=10)
+    r2 = session.post("https://ffmconnect.live.gop.garenanow.com/oauth/guest/token/grant", data=td, headers={'User-Agent':ua}, timeout=60)
     if r2.status_code != 200: 
         session.close()
         return None, None
@@ -69,8 +69,8 @@ def register(region):
     pf = {1:f"0xMe{''.join('⁰¹²³⁴⁵⁶⁷⁸⁹'[int(d)] for d in str(random.randint(1,9999)))}",2:at,3:oid,5:102000007,6:4,7:1,13:1,14:e(oid),15:region,16:1}
     ed = bytes.fromhex(aes(ep(pf).hex()))
     
-    hs = {"Authorization":f"Bearer {at}","X-Unity-Version":"2018.4.11f1","X-GA":"v1 1","ReleaseVersion":"OB50","Content-Type":"application/octet-stream","Content-Length":str(len(ed)),"User-Agent":ua,"Host":"loginbp.ggblueshark.com","Connection":"Keep-Alive","Accept-Encoding":"gzip"}
-    r3 = session.post('https://loginbp.ggblueshark.com/MajorRegister', data=ed, headers=hs, timeout=10)
+    hs = {"Authorization":f"Bearer {at}","X-Unity-Version":"2018.4.11f1","X-GA":"v1 1","ReleaseVersion":"OB55","Content-Type":"application/octet-stream","Content-Length":str(len(ed)),"User-Agent":ua,"Host":"loginbp.ggblueshark.com","Connection":"Keep-Alive","Accept-Encoding":"gzip"}
+    r3 = session.post('https://loginbp.ggblueshark.com/MajorRegister', data=ed, headers=hs, timeout=60)
     session.close()
     
     if r3.status_code == 200:
@@ -78,8 +78,23 @@ def register(region):
     return None, None
     
 
-regions = ['IND','SG','RU','ID','TW','US','VN','TH','ME','PK','CIS','BR','BD']
-accounts = {r: dict(zip(["uid","password"], register(r))) for r in regions}
-with open("../Configuration/AccountConfiguration.json","w") as f:
-    json.dump(accounts,f,indent=4)
-print("Saved ✅")
+# Replace the bottom lines of Additional/GenerateAccounts.py (from `regions = ...` downwards) with:
+regions = ["IND", "SG", "BR", "BD", "PK", "ME"]
+accounts = {}
+
+for r in regions:
+    for attempt in range(1, 4):
+        try:
+            print(f"[{r}] Generating guest account (Attempt {attempt}/3)...")
+            uid, password = register(r)
+            if uid and password:
+                accounts[r] = {"uid": str(uid), "password": str(password)}
+                print(f"  -> SUCCESS [{r}]: UID={uid}")
+                break
+        except Exception as e:
+            print(f"  -> Timeout/Error on [{r}]: {e}")
+
+if accounts:
+    with open("AccountConfiguration.json", "w") as f:
+        json.dump(accounts, f, indent=4)
+    print("\nSaved generated accounts to AccountConfiguration.json!")
